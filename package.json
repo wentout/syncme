@@ -1,0 +1,26 @@
+{
+  "name": "sync",
+  "description": "Simple sync bot",
+  "version": "0.1.0",
+  "author": "went.out@gmail.com",
+  "engines": [
+    "node >= 0.10.20"
+  ],
+  "main": "index.html",
+  "dependencies": {
+    "async": "0.2.9",
+    "compute-cluster": "~0.0.7",
+    "longjohn": "~0.2.2",
+    "mkdirp": "~0.3.5",
+    "watch": "~0.9.0",
+    "lodash": "~2.4.1",
+    "moment": "~2.5.1",
+    "rimraf": "^2.2.6",
+    "colors": "^0.6.2",
+    "fs-extra": "^0.8.1",
+    "directory-copy": "^0.1.0"
+  },
+  "scripts": {
+    "test": "node app.js"
+  }
+}
