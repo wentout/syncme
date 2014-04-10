@@ -1,3 +1,4 @@
+
 var path = require('path');
 var watch = require('watch');
 var fs = require('fs');
@@ -5,6 +6,7 @@ var fs_extra = require('fs-extra');
 var dir_copy = require('directory-copy');
 var mkdirp = require('mkdirp');
 var rimraf = require('rimraf');
+var moment = require('moment');
 
 var colors = require('colors');
 
@@ -13,6 +15,7 @@ var dirs = require('./config.js');
 
 var log = function() {
 	var arr = Array.prototype.slice.call(arguments);
+	arr.unshift(moment().format('HH:mm:ss YYYY.MM.DD'));
 	console.log.apply(null, arr);
 };
 
