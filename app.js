@@ -10,21 +10,10 @@ var moment = require('moment');
 
 var colors = require('colors');
 
-var dirs = require('./config.js');
-(dirs.async == undefined) && (dirs.async = true);
-
 var log = function() {
 	var arr = Array.prototype.slice.call(arguments);
 	arr.unshift(moment().format('HH:mm:ss YYYY.MM.DD'));
 	console.log.apply(null, arr);
-};
-
-log('Source:', dirs.src);
-log('Destination:', dirs.dst);
-log('Async:', dirs.async);
-
-var getPath = function(f) {
-	return f.split(dirs.src)[1];
 };
 
 var changed = function(str) {
@@ -38,10 +27,15 @@ var errlog = function(str) {
 };
 
 
-var makeChanges = function(f, type) {
+
+var getPath = function(f, dirs) {
+	return f.split(dirs.src)[1];
+};
+
+var makeChanges = function(f, dirs, type) {
 	try {
 
-		var fname = getPath(f);
+		var fname = getPath(f, dirs);
 		var rname = path.join(dirs.dst, fname);
 		var rdirname = path.dirname(rname);
 
@@ -91,51 +85,71 @@ var makeChanges = function(f, type) {
 	}
 };
 
-watch.createMonitor(dirs.src, function(monitor) {
-	monitor.on("changed", function(f, curr, prev) {
-		makeChanges(f, 'Changed');
-	});
-	monitor.on("created", function(f, stat) {
-		makeChanges(f, 'Created');
-	});
-	monitor.on("removed", function(f, stat) {
-		try {
-			var fname = getPath(f);
-			var rname = path.join(dirs.dst, fname);
-			var rdirname = path.dirname(rname);
+var makeRemoval = function(f, dirs) {
+	try {
+		var fname = getPath(f, dirs);
+		var rname = path.join(dirs.dst, fname);
+		var rdirname = path.dirname(rname);
 
-			log(changed('Removed : ' + fname));
+		log(changed('Removed : ' + fname));
 
-			if (dirs.async) {
-				fs.exists(rname, function(exists) {
-					if (exists) {
-						fs_extra.remove(rname, function(err) {
-							if (err) return console.error(err);
-							log(dest('Made Removal to: ' + rname));
-						});
-					} else {
-						log(dest('Removed Destination Not Exists.'));
-					}
-				});
-			} else {
-				if (fs.existsSync(rname)) {
-					if (fs.statSync(rname).isDirectory()) {
-						rimraf.sync(rname);
-						log(dest('Destination Removed: ' + rname));
-					} else {
-						fs.unlinkSync(rname);
-						log(dest('Destination Removed: ' + rname));
-					}
+		if (dirs.async) {
+			fs.exists(rname, function(exists) {
+				if (exists) {
+					fs_extra.remove(rname, function(err) {
+						if (err) return console.error(err);
+						log(dest('Made Removal to: ' + rname));
+					});
 				} else {
 					log(dest('Removed Destination Not Exists.'));
 				}
+			});
+		} else {
+			if (fs.existsSync(rname)) {
+				if (fs.statSync(rname).isDirectory()) {
+					rimraf.sync(rname);
+					log(dest('Destination Removed: ' + rname));
+				} else {
+					fs.unlinkSync(rname);
+					log(dest('Destination Removed: ' + rname));
+				}
+			} else {
+				log(dest('Removed Destination Not Exists.'));
 			}
-
-		} catch (e) {
-			log(errlog('Error'), errlog(e.stack || e));
 		}
-	});
-});
+
+	} catch (e) {
+		log(errlog('Error'), errlog(e.stack || e));
+	}
+};
+
+
+var config = require('./config.js');
+
+for (var i in config) {
+	(function(index, dirs) {
+
+		(dirs.async == undefined) && (dirs.async = true);
+
+		log('***  About of: ', index);
+		log('Source:', dirs.src);
+		log('Destination:', dirs.dst);
+		log('Async:', dirs.async);
+
+		watch.createMonitor(dirs.src, function(monitor) {
+			monitor.on("changed", function(f, curr, prev) {
+				makeChanges(f, dirs, 'Changed');
+			});
+			monitor.on("created", function(f, stat) {
+				makeChanges(f, dirs, 'Created');
+			});
+			monitor.on("removed", function(f, stat) {
+				makeRemoval(f, dirs);
+			});
+		});
+
+	}(i, config[i]));
+}
 
 
 var _repl = require('./repl.js');
@@ -143,8 +157,8 @@ var repl = null;
 
 setTimeout(function() {
 	repl = _repl(process, {
-		dirs: dirs,
-		log: log
+		config: config,
+		log: log,
 	}, null, function(str) {
 		log(str);
 		if (repl) {
