@@ -1,168 +1,153 @@
+#!/usr/bin/node.sh
 
-var path = require('path');
-var watch = require('watch');
-var fs = require('fs');
-var fs_extra = require('fs-extra');
-var dir_copy = require('directory-copy');
-var mkdirp = require('mkdirp');
-var rimraf = require('rimraf');
-var moment = require('moment');
+const path = require('path'),
+	watch = require('watch'),
+	fs = require('fs'),
+	fs_extra = require('fs-extra'),
+	dir_copy = require('directory-copy'),
+	mkdirp = require('mkdirp'),
+	rimraf = require('rimraf'),
+	moment = require('moment'),
+	colors = require('colors');
 
-var colors = require('colors');
-
-var log = function() {
-	var arr = Array.prototype.slice.call(arguments);
-	arr.unshift(moment().format('HH:mm:ss YYYY.MM.DD'));
-	console.log.apply(null, arr);
+const log = (...args) => {
+	args.unshift(moment().format('HH:mm:ss YYYY.MM.DD'));
+	console.log.apply(null, args);
 };
 
-var changed = function(str) {
+const changed = (str) => {
 	return str.cyan;
 };
-var dest = function(str) {
+const dest = (str) => {
 	return str.magenta;
 };
-var errlog = function(str) {
+const errlog = (str) => {
 	return str.red;
 };
 
-
-
-var getPath = function(f, dirs) {
+const getPath = (f, dirs) => {
 	return f.split(dirs.src)[1];
 };
 
-var makeChanges = function(f, dirs, type) {
+const makeChanges = (f, dirs, type) => {
 	try {
+		const fname = getPath(f, dirs);
+		const rname = path.join(dirs.dst, fname);
+		const rdirname = path.dirname(rname);
 
-		var fname = getPath(f, dirs);
-		var rname = path.join(dirs.dst, fname);
-		var rdirname = path.dirname(rname);
-
-		log(changed(type + ' : ' + fname));
+		log(changed(`${type} : ${fname}`));
 
 		if (dirs.async) {
-			fs_extra.copy(f, rname, function(err) {
+			fs_extra.copy(f, rname, (err) => {
 				if (err) return console.error(err);
-				log(dest('Copy made to: ' + rname));
+				log(dest(`Copy made to: ${rname}`));
 			});
-		} else {
-
-			setTimeout(function() {
-				if (fs.statSync(f).isDirectory()) {
-					if (fs.existsSync(rname)) {
-						// rimraf.sync(rname);
-					} else {
-						mkdirp.sync(rname);
-						dir_copy({
-							src: f,
-							dest: rname
-						}, function() {
-							log(dest('Destination Created: ' + rname));
-						});
-					}
-				} else {
-					if (fs.existsSync(rname)) {
-						fs.writeFileSync(rname, fs.readFileSync(f));
-						log(dest('Destination Changed: ' + rname));
-					} else {
-						if (fs.existsSync(rdirname)) {
-							fs.writeFileSync(rname, fs.readFileSync(f));
-							log(dest('Destination Created: ' + rname));
-						} else {
-							mkdirp.sync(rdirname);
-							log(dest('Destination Created: ' + rdirname));
-							fs.writeFileSync(rname, fs.readFileSync(f));
-							log(dest('Destination Created: ' + rname));
-						}
-					}
-				}
-			}, 1000);
-
+			return;
 		}
+		setTimeout(() => {
+			if (fs.statSync(f).isDirectory()) {
+				if (fs.existsSync(rname)) {
+					return;
+				}
+				mkdirp.sync(rname);
+				dir_copy(
+					{
+						src: f,
+						dest: rname
+					},
+					() => {
+						log(dest(`Destination Created: ${rname}`));
+					}
+				);
+				return;
+			}
+			if (fs.existsSync(rname)) {
+				fs.writeFileSync(rname, fs.readFileSync(f));
+				log(dest(`Destination Changed: ${rname}`));
+				return;
+			}
+			if (fs.existsSync(rdirname)) {
+				fs.writeFileSync(rname, fs.readFileSync(f));
+				log(dest(`Destination Created: ${rname}`));
+				return;
+			}
+			mkdirp.sync(rdirname);
+			log(dest(`Destination Created: ${rdirname}`));
+			fs.writeFileSync(rname, fs.readFileSync(f));
+			log(dest(`Destination Created: ${rname}`));
+		}, 1000);
 	} catch (e) {
 		log(errlog('Error'), errlog(e.stack || e));
 	}
 };
 
-var makeRemoval = function(f, dirs) {
+const makeRemoval = (f, dirs) => {
 	try {
-		var fname = getPath(f, dirs);
-		var rname = path.join(dirs.dst, fname);
-		var rdirname = path.dirname(rname);
+		const fname = getPath(f, dirs);
+		const rname = path.join(dirs.dst, fname);
+		const rdirname = path.dirname(rname);
 
-		log(changed('Removed : ' + fname));
+		log(changed(`Removed : ${fname}`));
 
 		if (dirs.async) {
-			fs.exists(rname, function(exists) {
-				if (exists) {
-					fs_extra.remove(rname, function(err) {
-						if (err) return console.error(err);
-						log(dest('Made Removal to: ' + rname));
-					});
-				} else {
+			fs.exists(rname, (exists) => {
+				if (!exists) {
 					log(dest('Removed Destination Not Exists.'));
+					return;
 				}
+				fs_extra.remove(rname, (err) => {
+					if (err) return console.error(err);
+					log(dest(`Made Removal to: ${rname}`));
+				});
 			});
 		} else {
-			if (fs.existsSync(rname)) {
-				if (fs.statSync(rname).isDirectory()) {
-					rimraf.sync(rname);
-					log(dest('Destination Removed: ' + rname));
-				} else {
-					fs.unlinkSync(rname);
-					log(dest('Destination Removed: ' + rname));
-				}
-			} else {
+			if (!fs.existsSync(rname)) {
 				log(dest('Removed Destination Not Exists.'));
 			}
+			if (fs.statSync(rname).isDirectory()) {
+				rimraf.sync(rname);
+				log(dest(`Destination Removed: ${rname}`));
+			} else {
+				fs.unlinkSync(rname);
+				log(dest(`Destination Removed: ${rname}`));
+			}
 		}
-
 	} catch (e) {
 		log(errlog('Error'), errlog(e.stack || e));
 	}
 };
 
 
-var config = require('./config.js');
-
-for (var i in config) {
-	(function(index, dirs) {
-
-		(dirs.async == undefined) && (dirs.async = true);
-
-		log('***  About of: ', index);
-		log('Source:', dirs.src);
-		log('Destination:', dirs.dst);
-		log('Async:', dirs.async);
-
-		watch.createMonitor(dirs.src, function(monitor) {
-			monitor.on("changed", function(f, curr, prev) {
-				makeChanges(f, dirs, 'Changed');
-			});
-			monitor.on("created", function(f, stat) {
-				makeChanges(f, dirs, 'Created');
-			});
-			monitor.on("removed", function(f, stat) {
-				makeRemoval(f, dirs);
-			});
-		});
-
-	}(i, config[i]));
+const configFileArgv = process.argv[2];
+if (!configFileArgv) {
+	log('no config file');
+	process.exit(1);
 }
 
+const configPath = path.join(__dirname, configFileArgv);
+if (!fs.existsSync(configPath)) {
+	log('wrong config path');
+	process.exit(1);
+}
 
-var _repl = require('./repl.js');
-var repl = null;
+const config = Object.entries(require(configPath)).forEach(it => {
+	const [name, dirs] = it;
+	dirs.async == undefined && (dirs.async = true);
 
-setTimeout(function() {
-	repl = _repl(process, {
-		config: config,
-		log: log,
-	}, null, function(str) {
-		log(str);
-		if (repl) {
-			this.displayPrompt();
-		}
+	log('***	About of: ', name);
+	log('Source:', dirs.src);
+	log('Destination:', dirs.dst);
+	log('Async:', dirs.async);
+
+	watch.createMonitor(dirs.src, (monitor) => {
+		monitor.on('changed', (f, curr, prev) => {
+			makeChanges(f, dirs, 'Changed');
+		});
+		monitor.on('created', (f, stat) => {
+			makeChanges(f, dirs, 'Created');
+		});
+		monitor.on('removed', (f, stat) => {
+			makeRemoval(f, dirs);
+		});
 	});
-}, 1000);
+});

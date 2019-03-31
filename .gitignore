@@ -1,0 +1,17 @@
+*.swp
+.idea
+.nyc_output
+.eslintcache
+.jshintrc
+.env
+
+yarn.lock
+package-lock.json
+
+*.DS_Store
+*\*.DS_Store
+*/*/*\*.DS_Store
+*/*/*/*\*.DS_Store
+*/*/*/*/*\*.DS_Store
+
+node_modules
