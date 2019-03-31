@@ -4,11 +4,10 @@ const path = require('path'),
 	watch = require('watch'),
 	fs = require('fs'),
 	fs_extra = require('fs-extra'),
-	dir_copy = require('directory-copy'),
 	mkdirp = require('mkdirp'),
+	dir_copy = require('directory-copy'),
 	rimraf = require('rimraf'),
-	moment = require('moment'),
-	colors = require('colors');
+	moment = require('moment');
 
 const log = (...args) => {
 	args.unshift(moment().format('HH:mm:ss YYYY.MM.DD'));
@@ -85,7 +84,6 @@ const makeRemoval = (f, dirs) => {
 	try {
 		const fname = getPath(f, dirs);
 		const rname = path.join(dirs.dst, fname);
-		const rdirname = path.dirname(rname);
 
 		log(changed(`Removed : ${fname}`));
 
@@ -130,7 +128,7 @@ if (!fs.existsSync(configPath)) {
 	process.exit(1);
 }
 
-const config = Object.entries(require(configPath)).forEach(it => {
+Object.entries(require(configPath)).forEach(it => {
 	const [name, dirs] = it;
 	dirs.async == undefined && (dirs.async = true);
 
@@ -140,13 +138,13 @@ const config = Object.entries(require(configPath)).forEach(it => {
 	log('Async:', dirs.async);
 
 	watch.createMonitor(dirs.src, (monitor) => {
-		monitor.on('changed', (f, curr, prev) => {
+		monitor.on('changed', (f) => {
 			makeChanges(f, dirs, 'Changed');
 		});
-		monitor.on('created', (f, stat) => {
+		monitor.on('created', (f) => {
 			makeChanges(f, dirs, 'Created');
 		});
-		monitor.on('removed', (f, stat) => {
+		monitor.on('removed', (f) => {
 			makeRemoval(f, dirs);
 		});
 	});
